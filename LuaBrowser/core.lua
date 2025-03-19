@@ -3,6 +3,18 @@ local modName = "LuaBrowser";
 local rawget = rawget;
 local type = type;
 
+string.match = function(str, pattern)
+	local startIdx, endIdx, capture1, capture2 = string.find(str, pattern);
+
+	if capture1 == nil then
+		return nil;
+	elseif capture2 ~= nil then
+		return capture1, capture2;
+	else
+		return capture1;
+	end
+end
+
 -- Global Chat Message Function
 function AzMsg(msg) DEFAULT_CHAT_FRAME:AddMessage(tostring(msg):gsub("|1","|cffffff80"):gsub("|2","|cffffffff"),0.5,0.75,1.0); end
 
@@ -25,15 +37,29 @@ local metaParent;
 -- Data
 local sortMethods = { "none", "type", "name", "data" };
 local typeList = {
-	["nil"]			= { color = "|cffc0c0c0", icon = "Interface\\Icons\\Spell_Shadow_MindTwisting" },
-	["function"]	= { color = "|cffff5000", icon = "Interface\\Icons\\Inv_Misc_SummerFest_BrazierRed" },
-	["string"]		= { color = "|cff00ff00", icon = "Interface\\Icons\\Inv_Misc_SummerFest_BrazierGreen" },
-	["number"]		= { color = "|cff00c0ff", icon = "Interface\\Icons\\Inv_Misc_SummerFest_BrazierBlue" },
-	["boolean"]		= { color = "|cffff60ff", icon = "Interface\\Icons\\Ability_Creature_Disease_05" },
-	["table"]		= { color = "|cffffff00", icon = "Interface\\Icons\\Inv_Misc_SummerFest_BrazierOrange" },
-	["userdata"]	= { color = "|cffffffff", icon = "Interface\\Icons\\Spell_DeathKnight_AntiMagicZone" },
-	["widget"]		= { color = "|cff00dbba", icon = "Interface\\Icons\\Ability_Druid_LunarGuidance" },
+	["nil"]			= { color = "|cffc0c0c0", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Spell_Shadow_MindTwisting" },
+	["function"]	= { color = "|cffff5000", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Inv_Misc_SummerFest_BrazierRed" },
+	["string"]		= { color = "|cff00ff00", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Inv_Misc_SummerFest_BrazierGreen" },
+	["number"]		= { color = "|cff00c0ff", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Inv_Misc_SummerFest_BrazierBlue" },
+	["boolean"]		= { color = "|cffff60ff", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Ability_Creature_Disease_05" },
+	["table"]		= { color = "|cffffff00", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Inv_Misc_SummerFest_BrazierOrange" },
+	["userdata"]	= { color = "|cffffffff", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Spell_DeathKnight_AntiMagicZone" },
+	["widget"]		= { color = "|cff00dbba", icon = "Interface\\AddOns\\LuaBrowser\\Icons\\Ability_Druid_LunarGuidance" },
 };
+
+-- Fallback icons for older clients
+--[[
+	local typeList = {
+		["nil"]			= { color = "|cffc0c0c0", icon = "Interface\\Icons\\Spell_Shadow_GatherShadows" },
+		["function"]	= { color = "|cffff5000", icon = "Interface\\Icons\\INV_Misc_MonsterScales_15" },
+		["string"]		= { color = "|cff00ff00", icon = "Interface\\Icons\\INV_Misc_MonsterScales_11" },
+		["number"]		= { color = "|cff00c0ff", icon = "Interface\\Icons\\INV_Misc_MonsterScales_09" },
+		["boolean"]		= { color = "|cffff60ff", icon = "Interface\\Icons\\Spell_Nature_NullifyDisease" },
+		["table"]		= { color = "|cffffff00", icon = "Interface\\Icons\\INV_Misc_MonsterScales_13" },
+		["userdata"]	= { color = "|cffffffff", icon = "Interface\\Icons\\Spell_Shadow_AntiShadow" },
+		["widget"]		= { color = "|cff00dbba", icon = "Interface\\Icons\\INV_Fabric_MoonRag_01" },
+	};
+--]]
 
 -- Show all types
 for k in next, typeList do
@@ -43,6 +69,13 @@ end
 --------------------------------------------------------------------------------------------------------
 --                                          Helper Functions                                          --
 --------------------------------------------------------------------------------------------------------
+
+-- Basic implementation of future client's table.wipe
+local function wipe(tbl)
+	for k in pairs(tbl) do
+		tbl[k] = nil;
+	end
+end
 
 -- Own version of type() which detects widgets
 local function datatype(v)
@@ -85,17 +118,25 @@ end
 
 -- Update List
 local function EntryList_Update()
-	FauxScrollFrame_Update(f.scroll,#data,#f.entries,ITEM_HEIGHT);
+	FauxScrollFrame_Update(f.scroll,getn(data),getn(f.entries),ITEM_HEIGHT);
 	local index = f.scroll.offset;
-	for i = 1, #f.entries do
+	for i = 1, getn(f.entries) do
 		index = (index + 1);
 		local btn = f.entries[i];
-		if (index <= #data) then
+		if (index <= getn(data)) then
 			local k = data[index];
 			local v = rawget(root,k);
 			local dType = datatype(v);
 			-- very messy line, but just trying to avoid string garbage
-			btn.name:SetFormattedText("%s%s\n|cffc0c0c0%s%s%s",typeList[dType].color,tostring(k),dType,(dType == "table" or dType == "widget") and "; entries = "..GetTableEntries(v) or "",dType == "widget" and "; "..v:GetObjectType() or "");
+			btn.name:SetText(string.format("%s%s\n|cffc0c0c0%s%s%s",
+				typeList[dType].color,
+				tostring(k),
+
+				dType,
+				(dType == "table" or dType == "widget") and "; entries = "..GetTableEntries(v) or "",
+				dType == "widget" and "; "..v:GetObjectType() or ""));
+			-- SetFormattedText was added in 2.3
+			--btn.name:SetFormattedText("%s%s\n|cffc0c0c0%s%s%s",typeList[dType].color,tostring(k),dType,(dType == "table" or dType == "widget") and "; entries = "..GetTableEntries(v) or "",dType == "widget" and "; "..v:GetObjectType() or "");
 			btn.value:SetText(tostring(v));
 			btn.icon:SetTexture(typeList[dType].icon);
 			btn.key = k;
@@ -105,7 +146,7 @@ local function EntryList_Update()
 		end
 	end
 	-- Resize
-	f.entries[1]:SetPoint("TOPRIGHT",(#data <= #f.entries and -8 or -24),-8);
+	f.entries[1]:SetPoint("TOPRIGHT",(getn(data) <= getn(f.entries) and -8 or -24),-8);
 end
 
 -- Set Filter
@@ -118,11 +159,21 @@ local function SetFilter(newFilter)
 	end
 end
 
+local function UpdateBreadcrumbs()
+	local crumbs = "_G\\"
+	
+	for idx, crumb in ipairs(history) do
+		crumbs = crumbs .. tostring(crumb.key) .. "\\"
+	end
+	
+	f.breadCrumb:SetText(crumbs);
+end
+
 -- Set Browsing Root
 local function SetRoot(newRoot)
 	-- Backup History
-	if (root) and (root ~= newRoot) and (#history == 0 or newRoot ~= history[#history].root) then
-		history[#history + 1] = { root = root, offset = f.scroll.offset, filter = filter };
+	if (root) and (root ~= newRoot) and (getn(history) == 0 or newRoot ~= history[getn(history)].root) then
+		history[getn(history) + 1] = { root = root, offset = f.scroll.offset, filter = filter, key = this.key };
 		SetFilter(nil);
 	end
 	-- Copy root to indexed table
@@ -131,49 +182,55 @@ local function SetRoot(newRoot)
 	wipe(data);
 	for k, v in next, root do
 		local dType = datatype(v);
-		if (typeFilter[dType] ~= false) and (not filter or tostring(k):lower():match(filter)) then
-			data[#data + 1] = k;
+		--if (typeFilter[dType] ~= false) and (not filter or tostring(k):lower():match(filter)) then
+		if (typeFilter[dType] ~= false) and (not filter or string.match(string.lower(tostring(k)),filter)) then
+			data[getn(data) + 1] = k;
 		end
 	end
 	-- Done
 	local origCount = GetTableEntries(root);
-	f.header:SetText("Lua Browser (|cffffff00"..(origCount == #data and #data or #data.."|r/|cffffff00"..origCount).."|r)")
+	f.header:SetText("Lua Browser (|cffffff00"..(origCount == getn(data) and getn(data) or getn(data).."|r/|cffffff00"..origCount).."|r)")
 	f.root:SetText(tostring(root));
 	if (sortMethod ~= "none") then
 		sort(data,SortEntriesFunc);
 	end
+	UpdateBreadcrumbs();
 	EntryList_Update();
 end
 
 -- History: Go Back
 local function HistoryGoBack()
-	if (#history > 0) then
-		local entry = history[#history];
+	if (getn(history) > 0) then
+		local entry = history[getn(history)];
 		SetFilter(entry.filter);
 		SetRoot(entry.root);
-		FauxScrollFrame_OnVerticalScroll(f.scroll,entry.offset * ITEM_HEIGHT,ITEM_HEIGHT,EntryList_Update);
-		history[#history] = nil;
+		-- TODO: fix restoring scroll position on back action
+		--FauxScrollFrame_OnVerticalScroll(f.scroll,entry.offset * ITEM_HEIGHT,ITEM_HEIGHT,EntryList_Update);
+		--FauxScrollFrame_OnVerticalScroll(ITEM_HEIGHT,EntryList_Update);
+		history[getn(history)] = nil;
+		UpdateBreadcrumbs();
 	end
 end
 
 -- Entry OnClick
 local function Entry_OnClick(self,button)
 	-- Right
-	if (button == "RightButton") then
+	if (arg1 == "RightButton") then
 		if (IsShiftKeyDown()) then
-			root[self.key] = nil;
+			root[this.key] = nil;
 			SetRoot(root);
 		else
 			HistoryGoBack();
 		end
 	-- Left
 	else
-		local v = rawget(root,self.key);
+		local v = rawget(root,this.key);
 		local dType = type(v);
 		-- link value
-		local activeEdit = ChatEdit_GetActiveWindow();
-		if (IsModifiedClick("CHATLINK")) and (activeEdit and activeEdit:IsVisible()) then
-			activeEdit:Insert(self.key.." = "..tostring(v));
+		if IsShiftKeyDown() and WIM_EditBoxInFocus then
+			WIM_EditBoxInFocus:Insert(this.key.." = "..tostring(v));
+		elseif IsShiftKeyDown() and ChatFrameEditBox:IsVisible() then
+			ChatFrameEditBox:Insert(this.key.." = "..tostring(v));
 		-- table
 		elseif (dType == "table") then
 			if (IsShiftKeyDown()) then
@@ -191,7 +248,7 @@ local function Entry_OnClick(self,button)
 		-- function
 		elseif (dType == "function") then
 			local ret = { v(metaParent or IsShiftKeyDown() and root or nil) };
-			if (#ret > 0) then
+			if (getn(ret) > 0) then
 				SetRoot(ret);
 			end
 		end
@@ -204,8 +261,10 @@ end
 
 local function DropDown_Init(dropDown,list)
 	for typeName, typeTbl in next, typeList do
-		local tbl = list[#list + 1];
-		tbl.text = typeTbl.color..typeName; tbl.value = typeName; tbl.checked = typeFilter[typeName];
+		local tbl = list[getn(list) + 1];
+		tbl.text = typeTbl.color..typeName;
+		tbl.value = typeName;
+		tbl.checked = typeFilter[typeName];
 	end
 end
 
@@ -253,13 +312,13 @@ f.dropDown2.label:SetText("Sort Method...");
 --------------------------------------------------------------------------------------------------------
 
 local function OnMouseDown(self,button)
-	if (button == "LeftButton") then
+	if (arg1 == "LeftButton") then
 		f:StartMoving();
 	end
 end
 
 local function OnMouseUp(self,button)
-	if (button == "LeftButton") then
+	if (arg1 == "LeftButton") then
 		f:StopMovingOrSizing();
 	else
 		HistoryGoBack();
@@ -275,7 +334,7 @@ f:EnableMouse(1);
 f:SetMovable(1);
 f:SetFrameStrata("HIGH");
 f:SetToplevel(1);
-f:SetPoint("CENTER");
+f:SetPoint("CENTER", UIParent);
 f:Hide();
 
 f:SetScript("OnMouseDown",OnMouseDown);
@@ -307,7 +366,7 @@ local function RootFrame_OnEnter(self)
 		local dType = datatype(v);
 		rootTypes[dType] = (rootTypes[dType] or 0) + 1;
 	end
-	GameTooltip:SetOwner(self,"ANCHOR_RIGHT");
+	GameTooltip:SetOwner(this,"ANCHOR_RIGHT");
 	GameTooltip:AddLine("Data Type Count",1,1,1);
 	for type, count in next, rootTypes do
 		GameTooltip:AddDoubleLine(type,count,nil,nil,nil,1,1,1);
@@ -348,6 +407,12 @@ f.btnMeta:SetScript("OnClick",function(self) metaParent = nil; self:Disable(); e
 f.btnMeta:SetText("Clear Meta");
 f.btnMeta:Disable();
 
+-- Breadcrumb bar
+f.breadCrumb = f:CreateFontString(nil, "OVERLAY", "GameTooltipText");
+f.breadCrumb:SetFont(f.header:GetFont(), 8, "OUTLINE");
+f.breadCrumb:SetPoint("BOTTOMLEFT", 12, 36);
+f.breadCrumb:SetText("Breadcrumbs");
+
 -- Create Entries
 ITEM_HEIGHT = (f.outline:GetHeight() - 16) / NUM_ITEMS - 1;
 f.entries = {};
@@ -355,7 +420,7 @@ for i = 1, NUM_ITEMS do
 	local e = CreateFrame("Button",nil,f.outline);
 	e:SetWidth(ITEM_HEIGHT);
 	e:SetHeight(ITEM_HEIGHT);
-	e:RegisterForClicks("AnyUp");
+	e:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp", "Button4Up", "Button5Up"); -- AnyUp value does not exist in 1.12
 	e:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight");
 	e:SetScript("OnClick",Entry_OnClick);
 
@@ -368,8 +433,8 @@ for i = 1, NUM_ITEMS do
 	end
 
 	e.icon = e:CreateTexture(nil,"ARTWORK");
-	e.icon:SetPoint("TOPLEFT");
-	e.icon:SetPoint("BOTTOMLEFT");
+	e.icon:SetPoint("TOPLEFT", e);
+	e.icon:SetPoint("BOTTOMLEFT", e);
 	e.icon:SetWidth(ITEM_HEIGHT);
 	e.icon:SetTexCoord(0.07,0.93,0.07,0.93);
 
@@ -387,8 +452,12 @@ end
 
 f.scroll = CreateFrame("ScrollFrame","LuaBrowserScroll",f,"FauxScrollFrameTemplate");
 f.scroll:SetPoint("TOPLEFT",f.entries[1]);
-f.scroll:SetPoint("BOTTOMRIGHT",f.entries[#f.entries],-6,-1);
-f.scroll:SetScript("OnVerticalScroll",function(self,offset) FauxScrollFrame_OnVerticalScroll(self,offset,ITEM_HEIGHT,EntryList_Update) end);
+f.scroll:SetPoint("BOTTOMRIGHT",f.entries[getn(f.entries)],-6,-1);
+-- https://wowpedia.fandom.com/wiki/Making_a_scrollable_list_using_FauxScrollFrameTemplate?oldid=1572171
+--f.scroll:SetScript("OnVerticalScroll",function(self,offset) FauxScrollFrame_OnVerticalScroll(self,offset,ITEM_HEIGHT,EntryList_Update) end);
+--FauxScrollFrame_Update(f.scroll, getn(f.entries), NUM_ITEMS, ITEM_HEIGHT);
+f.scroll:SetScript("OnVerticalScroll",function(self,offset) FauxScrollFrame_OnVerticalScroll(ITEM_HEIGHT,EntryList_Update) end);
+FauxScrollFrame_Update(f.scroll, getn(f.entries), NUM_ITEMS, ITEM_HEIGHT);
 
 --------------------------------------------------------------------------------------------------------
 --                                           Slash Handling                                           --
@@ -396,14 +465,17 @@ f.scroll:SetScript("OnVerticalScroll",function(self,offset) FauxScrollFrame_OnVe
 _G["SLASH_"..modName.."1"] = "/lb";
 SlashCmdList[modName] = function(cmd)
 	-- Extract Parameters
-	local param1, param2 = cmd:match("^([^%s]+)%s*(.*)$");
-	param1 = (param1 and param1:lower() or cmd:lower());
+	--local param1, param2 = cmd:match("^([^%s]+)%s*(.*)$");
+	local param1, param2 = string.match(tostring(cmd), "^([^%s]+)%s*(.*)$");
+	param1 = (param1 and string.lower(param1) or string.lower(cmd));
 	-- Options
 	if (param1 == "") then
-		if (#data == 0) then
+		if (getn(data) == 0) then
 			SetRoot(_G);
 		end
 		f:Show();
+		-- Force another update to make the scroll bar function without needing to click Refresh
+		EntryList_Update();
 	-- Mouse
 	elseif (param1 == "mouse") then
 		SetRoot(GetMouseFocus());
