@@ -1,0 +1,7 @@
+## Interface: 30300
+## Version: 10.06.28
+## Title: Lua Browser
+## Author: Aezay (Earthen Ring EU)
+## Notes: Lua Browser
+Libs\AzDropDown.lua
+core.lua

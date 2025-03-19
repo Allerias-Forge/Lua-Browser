@@ -1,0 +1,38 @@
+Lua Browser Changes | 2010 Jun 28
+---------------------------------
+- Corrected the error that could happen when clicking on an item, which was introduced with the latest "ChatFrameEditBox" fix.
+
+Lua Browser Changes | 2010 Jun 27
+---------------------------------
+- Fixed the ChatFrameEditBox issues.
+
+Lua Browser Changes | 2010 Feb 27
+---------------------------------
+- Changed the TOC version to 30300 for the 3.3 patch.
+
+Lua Browser Changes | 2009 May 18
+---------------------------------
+- Changed the TOC version to 30100 for the 3.1 patch.
+- If you move the mouse over the window showing the address of the current root, it will show a tip with how many of each data type is in this table.
+- Filter settings are now saved per root, instead of a global setting, this should make browsing back and forth from _G a lot more pleasent.
+- Did a few code optimisations.
+
+Lua Browser Changes | 2009 Apr 07
+---------------------------------
+- Fixed a bug that caused not all keys in a table to be shown.
+
+Lua Browser Changes | 2009 Apr 06
+---------------------------------
+- Now sets the global variables "lbRoot" to the current browsed table. This is done so you can easily work with the table in a custom script using "/run" or similar.
+- Some other issues related to showing tables with metatables, is now fixed by using rawget() everywhere instead of normal table access.
+- Removed some global pollution from the sort function.
+- Now shows the current table address next to the close button.
+- If a table had a metatable with an "__index" function, which would return a value or give an error when accessing table[0], Lua Brower were not able to detect widget objects. This problem has been resolved by testing existence with rawget().
+- Fixed an error if a table key was anything but a string or number.
+- If you hold down shift when selecting a type filter, it will be selected exclusivly.
+- Added the slash command "/lb mousemeta", allows you to browse the meta table of the widget under the mouse.
+- Removed the global slash command "/lb global <key>", use "/lb code <code>" instead.
+
+Lua Browser Changes | 2009 Apr 03
+---------------------------------
+- First release ever.
